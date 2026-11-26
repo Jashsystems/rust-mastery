@@ -1,73 +1,273 @@
-Reference
+# Borrowing and References in Rust
 
-What it means: a reference lets you use a value without owning it. Creating one is called borrowing.
-Why Rust needs it: without references, every function call would take ownership and the caller couldn't use the value afterwards.
-Syntax: &x (shared borrow), &mut x (mutable borrow). The parameter type is written s: &String or s: &mut String.
-rust
+**Day:** 03  
+**Topic:** Borrowing  
+**Status:** Practiced and implemented  
+**Project:** `projects/borrowing_lab`
+
+## 1. What is Borrowing?
+
+Borrowing allows a function or variable to access data without taking ownership of it.
+
+Rust uses references for borrowing.
+
+```rust
+let name = String::from("loglens");
+
+let reference = &name;
+
+println!("{}", reference);
+println!("{}", name);
+```
+
+The original variable remains the owner.
+
+## 2. Shared Borrowing (`&`)
+
+A shared reference allows reading data without modifying it.
+
+```rust
+fn show(s: &String) {
+    println!("{}", s);
+}
+
+fn main() {
+    let name = String::from("loglens");
+
+    show(&name);
+
+    println!("{}", name);
+}
+```
+
+Both the function and the original owner can access the String.
+
+### Multiple Shared References
+
+Rust allows multiple shared references at the same time.
+
+```rust
+let name = String::from("Rust");
+
+let first = &name;
+let second = &name;
+
+println!("{}", first);
+println!("{}", second);
+```
+
+Shared references are read-only.
+
+## 3. Mutable Borrowing (`&mut`)
+
+A mutable reference allows modification of borrowed data.
+
+```rust
+fn add_exclaim(s: &mut String) {
+    s.push_str("!");
+}
+
+fn main() {
+    let mut name = String::from("hi");
+
+    add_exclaim(&mut name);
+
+    println!("{}", name);
+}
+```
+
+Output:
+
+```text
+hi!
+```
+
+Two things are important:
+
+- `let mut name` allows the variable to be modified.
+- `&mut name` creates a mutable reference.
+
+## 4. Modifying Data Through References
+
+Mutable references allow functions to modify the original data.
+
+```rust
+fn add_text(s: &mut String, text: &str) {
+    s.push_str(text);
+}
+
+fn main() {
+    let mut message = String::from("Hello");
+
+    add_text(&mut message, " Rust");
+
+    println!("{}", message);
+}
+```
+
+Output:
+
+```text
+Hello Rust
+```
+
+No ownership transfer occurs.
+
+## 5. Borrowing in Functions
+
+Functions can accept references instead of taking ownership.
+
+```rust
+fn display_name(name: &String) {
+    println!("{}", name);
+}
+
+fn main() {
+    let name = String::from("Jash");
+
+    display_name(&name);
+
+    println!("{}", name);
+}
+```
+
+The String remains usable after the function call.
+
+## 6. Sequential Borrowing
+
+A mutable borrow can be created after shared references are no longer being used.
+
+```rust
+fn main() {
+    let mut text = String::from("Rust");
+
+    let first = &text;
+    let second = &text;
+
+    println!("{}", first);
+    println!("{}", second);
+
+    let mutable = &mut text;
+
+    mutable.push_str(" Programming");
+
+    println!("{}", mutable);
+}
+```
+
+Rust's borrow checker ensures conflicting references are not used simultaneously.
+
+## 7. The Borrowing Rules
+
+Rust follows one fundamental rule:
+
+**At any given time, you can have either:**
+
+- Any number of shared references (`&T`).
+- Exactly one mutable reference (`&mut T`).
+
+You cannot have an active mutable reference alongside active shared references to the same data.
+
+This prevents data races and unexpected changes while data is being read.
+
+## 8. Common Borrowing Errors
+
+### E0502 — Conflicting Borrows
+
+```rust
+let mut s = String::from("hi");
+
+let r1 = &s;
+let r2 = &mut s;
+
+// println!("{} {}", r1, r2);
+```
+
+**Reason:** A shared reference and a mutable reference cannot be used in conflicting overlapping borrows.
+
+### E0596 — Cannot Mutably Borrow
+
+```rust
+let name = String::from("hi");
+
+// add_exclaim(&mut name);
+```
+
+**Reason:** The variable was declared immutable using `let`, so it cannot be mutably borrowed.
+
+## 9. String Length and `usize`
+
+References can be passed to functions that return values.
+
+```rust
 fn count_chars(s: &String) -> usize {
     s.len()
 }
 
 fn main() {
     let name = String::from("loglens");
-    let a = count_chars(&name);
-    let b = count_chars(&name);   // works, name was only lent
-    println!("{} {} {}", a, b, name);
+
+    let first = count_chars(&name);
+    let second = count_chars(&name);
+
+    println!("{}", first);
+    println!("{}", second);
+
+    println!("{}", name);
 }
+```
 
-The two borrow types
+Output:
 
-	Shared &x	Mutable &mut x
-Read	yes	yes
-Change	no	yes
-How many at once	any number	exactly one
-Together with the other kind	no	no
+```text
+7
+7
+loglens
+```
 
-The rule: at any moment you may have either many readers or one writer, never both. This prevents data from changing while someone is reading it.
+**Important:** `String::len()` returns the number of bytes, not necessarily the number of Unicode characters.
 
-Both places must say mut
+`usize` is an unsigned integer type commonly used for sizes and indexing.
 
-rust
-let mut name = String::from("hi");   // variable must be mut
-add_exclaim(&mut name);              // borrow must be mut
+## 10. Shared vs Mutable Borrowing
 
-Common compiler errors
+| Feature | Shared (`&`) | Mutable (`&mut`) |
+|---|---|---|
+| Read data | Yes | Yes |
+| Modify data | No | Yes |
+| Multiple simultaneous references | Yes | No |
+| Ownership transfer | No | No |
 
-Error	Cause	Fix
-E0382, borrow of moved value	passed name instead of &name, so ownership moved	pass &name
-E0596, cannot borrow as mutable	&mut on a variable not declared mut	let mut name
-E0502, cannot borrow as mutable because it is also borrowed as immutable	a & borrow is still in use while a &mut is created	finish using the & first, or restructure
+## 11. Practical Implementation
 
-When to use
+**Project:** `borrowing_lab`
 
-Default to & (read only).
-Use &mut only when the function must change the data.
-Pass by value (move) only when the function should keep or consume the data.
+Location: `projects/borrowing_lab/src/main.rs`
 
-Practical improvement: prefer &str over &String for text parameters. A &str parameter accepts both string literals and borrowed Strings, so it's more flexible. Slices get their own lesson next.
+Implemented:
 
-In loglens: level_of(line: &str) borrows its input, so line is still usable after the call.
+- Shared borrowing
+- Multiple shared references
+- Mutable borrowing
+- Modifying data through references
+- Borrowing in functions
+- Sequential borrowing
+- String length calculation
+- Borrowing error explanations
+- Assertion-based checks
 
-Compiler-error notebook entries
-## E0382: borrow of moved value (missing &)
-- Why it happened: show(name) moved the String into the function
-- What Rust was enforcing: one owner at a time
-- How I fixed it: show(&name)
-- What I learned: pass a reference when the function only needs to look
+## 12. Important Takeaways
 
-## E0596: cannot borrow as mutable
-- Why it happened: &mut on a variable declared without mut
-- What Rust was enforcing: mutation must be declared at the variable and at the borrow
-- How I fixed it: let mut name
-- What I learned: mut appears twice so changes are never accidental
+- `&` creates a shared reference.
+- `&mut` creates a mutable reference.
+- Borrowing does not transfer ownership.
+- Multiple shared references are allowed.
+- Only one mutable reference can be active at a time.
+- Shared and mutable references cannot have conflicting overlapping use.
+- Borrowing makes functions more flexible without unnecessary ownership transfers.
 
-## E0502: mutable borrow while shared borrow is alive
-- Why it happened: r1 (&s) was still in use when r2 (&mut s) was created
-- What Rust was enforcing: many readers or one writer, never both
-- How I fixed it: used r1 before creating r2, or dropped the idea
-- What I learned: this stops data changing under a reader
-Dashboard update
-Introduced: ownership, move vs Copy, borrowing (& and &mut)
-Written independently: count_chars with a reference
-Compiler errors seen: E0382, E0596, E0502 (plus E0384, linker)
-Next: slices and &str
+**Engineering principle:** Borrow data when you only need temporary access. Use mutable borrowing when modification is necessary.
+
+---
+
+**Next concept:** Slices and String Slices.
